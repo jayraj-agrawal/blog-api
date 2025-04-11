@@ -2,40 +2,30 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\User;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Validator;
+use App\Http\Requests\LoginRequest;
+use Illuminate\Support\Facades\Auth;
 
 class AuthController extends Controller
 {
-    public function login(Request $request)
+    public function login(LoginRequest $request)
     {
-        $validator = Validator::make($request->all(), [
-            'email' => 'required|email',
-            'password' => 'required'
-        ]);
-        if ($validator->fails()) {
+        $credentials = $request->validated();
+
+        if (!Auth::attempt($credentials)) {
             return response()->json([
                 'type' => 'error',
-                'errors' => $validator->messages()
-            ],403);
+                'msg' => 'The provided credentials do not match our records'
+            ], 401);
         }
-        $checkEmail = User::where(['email' => $request->email])->first();
-        if ($checkEmail) {
-            if (Hash::check($request->password, $checkEmail->password)) {
-                $success['token'] =  $checkEmail->createToken('MyAuthApp')->plainTextToken;
-                $success['name'] =  $checkEmail->name;
-                return response()->json([
-                    'type' => 'success',
-                    'msg' => 'Login successfully',
-                    'data'=>$success
-                ],200);
-            }
-        }
+
+        $user = Auth::user();
+
+        $token = $user->createToken('MyAuthApp')->plainTextToken;
+
         return response()->json([
-            'type' => 'error',
-            'msg' => 'The provided credentials do not match our records'
-        ],401);
+            'type' => 'success',
+            'msg' => 'Login successfully',
+            'data' => $token
+        ], 200);
     }
 }
